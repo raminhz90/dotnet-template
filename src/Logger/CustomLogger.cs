@@ -1,11 +1,17 @@
 ﻿using System.Globalization;
+using Microsoft.Extensions.Hosting;
 using Serilog;
+using Serilog.Events;
 using Serilog.Extensions.Hosting;
 
 namespace logger;
 
 public static class CustomLogger
 {
+	private const RollingInterval LogRollingInterval = RollingInterval.Month;
+	private const int LogFileCountLimit = 12;
+	private const int LogFileSizeLimitBytes = 50 * 1024 * 1024;
+
 	/// <summary>
 	/// Creates a logger used during application initialization.
 	/// <see href="https://nblumhardt.com/2020/10/bootstrap-logger/"/>.
@@ -29,4 +35,26 @@ public static class CustomLogger
 		}
 	}
 
+	public static void ConfigureReloadableLogger(
+		HostBuilderContext context,
+		IServiceProvider services,
+		LoggerConfiguration configuration)
+	{
+		ArgumentNullException.ThrowIfNull(configuration);
+		_ = configuration
+			.ReadFrom.Configuration(context.Configuration)
+			.ReadFrom.Services(services)
+			.Enrich.WithProperty("Application", context.HostingEnvironment.ApplicationName)
+			.Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName)
+			.WriteTo.Conditional(
+				x => context.HostingEnvironment.IsDevelopment(),
+				x => x.Console(formatProvider: CultureInfo.InvariantCulture)
+					.WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture))
+			.WriteTo.Conditional(
+				x => !context.HostingEnvironment.IsDevelopment(),
+				x => x.File("Logs/log.txt", rollingInterval: LogRollingInterval,
+					retainedFileCountLimit: LogFileCountLimit, fileSizeLimitBytes: LogFileSizeLimitBytes,
+					buffered: true, flushToDiskInterval: TimeSpan.FromSeconds(5), restrictedToMinimumLevel: LogEventLevel.Information,
+					formatProvider: CultureInfo.InvariantCulture));
+	}
 }

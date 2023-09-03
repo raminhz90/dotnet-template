@@ -1,20 +1,33 @@
 using logger;
 using Serilog;
 using Webapi.HostConfigurations;
+using Webapi.Options;
 using Webapi.Utils;
 
 Log.Logger = CustomLogger.CreateBootstrapLogger();
 try
 {
 	Log.Information("Starting up");
-	var builder = new HostBuilder();
-	builder.UseContentRoot(Directory.GetCurrentDirectory())
+	IHostBuilder builder = new HostBuilder();
+	_ = builder.UseContentRoot(Directory.GetCurrentDirectory())
 			.ConfigureAppConfiguration(
 				(hostingContext, configurationBuilder) =>
 				{
 					hostingContext.HostingEnvironment.ApplicationName = AssemblyInformation.Current.Product;
-					configurationBuilder.AddCustomConfiguration(hostingContext.HostingEnvironment, args);
+					_ = configurationBuilder.AddCustomConfiguration(hostingContext.HostingEnvironment, args);
 				})
+			.UseSerilog(CustomLogger.ConfigureReloadableLogger)
+			.UseDefaultServiceProvider(
+				(context, options) =>
+				{
+					var isDevelopment = context.HostingEnvironment.IsDevelopment();
+					options.ValidateScopes = isDevelopment;
+					options.ValidateOnBuild = isDevelopment;
+				})
+				.ConfigureWebHost(ConfigureWebHostBuilder)
+			.UseConsoleLifetime();
+	var host = builder.Build();
+	await host.RunAsync().ConfigureAwait(false);
 
 }
 catch (Exception exception)
@@ -23,29 +36,20 @@ catch (Exception exception)
 }
 finally
 {
-	Log.CloseAndFlush();
+	await Log.CloseAndFlushAsync().ConfigureAwait(false);
 }
 
-// // Add services to the container.
 
-// builder.Services.AddControllers();
-// // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-// builder.Services.AddEndpointsApiExplorer();
-// builder.Services.AddSwaggerGen();
-
-// var app = builder.Build();
-
-// // Configure the HTTP request pipeline.
-// if (app.Environment.IsDevelopment())
-// {
-// 	_ = app.UseSwagger();
-// 	_ = app.UseSwaggerUI();
-// }
-
-// app.UseHttpsRedirection();
-
-// app.UseAuthorization();
-
-// app.MapControllers();
-
-// app.Run();
+static void ConfigureWebHostBuilder(IWebHostBuilder webHostBuilder) =>
+	   webHostBuilder
+		   .UseKestrel(
+			   (builderContext, options) =>
+			   {
+				   options.AddServerHeader = false;
+				   _ = options.Configure(
+					   builderContext.Configuration.GetRequiredSection(nameof(ApplicationOptions.Kestrel)),
+					   reloadOnChange: false);
+			   })
+		   // Used for IIS and IIS Express for in-process hosting. Use UseIISIntegration for out-of-process hosting.
+		   .UseIIS()
+		   .UseStartup<Startup>();
