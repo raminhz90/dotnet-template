@@ -1,8 +1,8 @@
 using logger;
 using Serilog;
+using Webapi;
 using Webapi.HostConfigurations;
 using Webapi.Options;
-using Webapi.Utils;
 
 Log.Logger = CustomLogger.CreateBootstrapLogger();
 try
@@ -13,7 +13,6 @@ try
 			.ConfigureAppConfiguration(
 				(hostingContext, configurationBuilder) =>
 				{
-					hostingContext.HostingEnvironment.ApplicationName = AssemblyInformation.Current.Product;
 					_ = configurationBuilder.AddCustomConfiguration(hostingContext.HostingEnvironment, args);
 				})
 			.UseSerilog(CustomLogger.ConfigureReloadableLogger)

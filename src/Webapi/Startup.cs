@@ -1,7 +1,8 @@
-using Serilog;
+using Boxed.AspNetCore;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
-using Boxed.AspNetCore;
+using Serilog;
+using Webapi.HostConfigurations;
 
 namespace Webapi;
 /// <summary>
@@ -10,6 +11,7 @@ namespace Webapi;
 public class Startup
 {
 	private readonly IConfiguration configuration;
+
 	private readonly IWebHostEnvironment webHostEnvironment;
 
 	/// <summary>
@@ -31,31 +33,32 @@ public class Startup
 	/// http://blogs.msdn.com/b/webdev/archive/2014/06/17/dependency-injection-in-asp-net-vnext.aspx
 	/// </summary>
 	/// <param name="services">The services.</param>
-	public void ConfigureServices(IServiceCollection services) =>
-		services
+	public void ConfigureServices(IServiceCollection services)
+	{
+		_ = services
 			.AddDistributedMemoryCache()
-			.AddCors()
 			.AddResponseCompression()
-			.AddRouting()
-			.AddResponseCaching()
-			// .AddCustomHealthChecks()
-			// .AddOpenTelemetryTracing(builder => builder.AddCustomTracing(this.webHostEnvironment))
-			.AddSwaggerGen()
-			.AddHttpContextAccessor()
-			// Add useful interface for accessing the ActionContext outside a controller.
-			.AddSingleton<IActionContextAccessor, ActionContextAccessor>()
-			// .AddApiVersioning()
-			// .AddVersionedApiExplorer()
-			.AddServerTiming()
-			.AddValidatorsFromAssemblyContaining<Startup>(lifetime: ServiceLifetime.Singleton)
-			.AddControllers(x => x.ModelValidatorProviders.Clear());
-	// .Services
-	// .AddCustomOptions(this.configuration)
-	// .AddCustomConfigureOptions()
-	// .AddProjectCommands()
-	// .AddProjectMappers()
-	// .AddProjectRepositories()
-	// .AddProjectServices();
+			.AddRouting();
+		_ = services.AddResponseCaching()
+		.AddCustomHealthChecks()
+		// .AddOpenTelemetryTracing(builder => builder.AddCustomTracing(this.webHostEnvironment))
+		.AddSwaggerGen()
+		.AddHttpContextAccessor()
+		// Add useful interface for accessing the ActionContext outside a controller.
+		.AddSingleton<IActionContextAccessor, ActionContextAccessor>()
+		.AddServerTiming();
+		_ = services
+		.AddControllers();
+		_ = services
+		.AddCustomOptions(this.configuration);
+		_ = services
+		.AddCustomConfigureOptions();
+		_ = services
+		.AddProjectCommands()
+		.AddProjectMappers()
+		.AddProjectRepositories()
+		.AddProjectServices();
+	}
 
 	/// <summary>
 	/// Configures the application and HTTP request pipeline. Configure is called after ConfigureServices is
@@ -74,7 +77,6 @@ public class Startup
 		_ = application
 			.UseForwardedHeaders()
 			.UseRouting()
-			.UseCors(CorsPolicyName.AllowAny)
 			.UseResponseCaching()
 			.UseResponseCompression()
 			.UseStaticFiles()
@@ -83,13 +85,11 @@ public class Startup
 			.UseEndpoints(
 				builder =>
 				{
-					builder.MapControllers().RequireCors(CorsPolicyName.AllowAny);
-					builder
-						.MapHealthChecks("/status")
-						.RequireCors(CorsPolicyName.AllowAny);
-					builder
-						.MapHealthChecks("/status/self", new HealthCheckOptions() { Predicate = _ => false })
-						.RequireCors(CorsPolicyName.AllowAny);
+					_ = builder.MapControllers();
+					_ = builder
+						.MapHealthChecks("/status");
+					_ = builder
+						.MapHealthChecks("/status/self", new HealthCheckOptions() { Predicate = _ => false });
 					if (this.webHostEnvironment.IsDevelopment())
 					{
 						_ = builder.MapSwagger();
