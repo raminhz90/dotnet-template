@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using Serilog.Enrichers.CallerInfo;
 using Serilog.Events;
 using Serilog.Extensions.Hosting;
 
@@ -46,15 +47,38 @@ public static class CustomLogger
 			.ReadFrom.Services(services)
 			.Enrich.WithProperty("Application", context.HostingEnvironment.ApplicationName)
 			.Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName)
+			//when in development enrich with  thread id
+			.Enrich.When(
+				x => context.HostingEnvironment.IsDevelopment(),
+				x => x.WithMemoryUsage())
+				.Enrich.When(
+				x => context.HostingEnvironment.IsDevelopment(),
+				x => x.WithProcessId())
+				.Enrich.When(
+				x => context.HostingEnvironment.IsDevelopment(),
+				x => x.WithProcessName())
+				.Enrich.When(
+				x => context.HostingEnvironment.IsDevelopment(),
+				x => x.WithThreadId())
+				.Enrich.When(
+				x => context.HostingEnvironment.IsDevelopment(),
+				x => x.WithThreadName())
+				.Enrich.When(
+				x => context.HostingEnvironment.IsDevelopment(),
+				x => x.WithMemoryUsage())
+				.Enrich.When(
+				x => context.HostingEnvironment.IsDevelopment(),
+				x => x.WithCallerInfo(includeFileInfo: true, assemblyPrefix: "", excludedPrefixes: new List<string>() { "Serilog", "Microsoft", "System" }))
 			.WriteTo.Conditional(
 				x => context.HostingEnvironment.IsDevelopment(),
-				x => x.Console(formatProvider: CultureInfo.InvariantCulture)
-					.WriteTo.Debug(formatProvider: CultureInfo.InvariantCulture))
+				x => x.Console(formatProvider: CultureInfo.InvariantCulture,
+				outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] <Process:{ProcessId}:{ProcessName}> <Thread:{ThreadId}:{ThreadName}> <MemoryUsage:{MemoryUsage} Bytes>{NewLine}<Namespace:{Namespace}> <SourceFile:{SourceFile}> <LineNumber:{LineNumber}>{NewLine}{Message}{NewLine}{Exception}{NewLine}")
+			)
 			.WriteTo.Conditional(
 				x => !context.HostingEnvironment.IsDevelopment(),
 				x => x.File("Logs/log.txt", rollingInterval: LogRollingInterval,
 					retainedFileCountLimit: LogFileCountLimit, fileSizeLimitBytes: LogFileSizeLimitBytes,
-					buffered: true, flushToDiskInterval: TimeSpan.FromSeconds(5), restrictedToMinimumLevel: LogEventLevel.Information,
+					buffered: true, flushToDiskInterval: TimeSpan.FromSeconds(1), restrictedToMinimumLevel: LogEventLevel.Information,
 					formatProvider: CultureInfo.InvariantCulture));
 	}
 }

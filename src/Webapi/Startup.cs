@@ -80,7 +80,7 @@ public class Startup
 			.UseResponseCaching()
 			.UseResponseCompression()
 			.UseStaticFiles()
-			.UseSerilogRequestLogging()
+			// .UseSerilogRequestLogging()
 			.UseRequestCanceled()
 			.UseEndpoints(
 				builder =>
