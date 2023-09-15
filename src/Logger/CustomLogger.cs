@@ -47,7 +47,8 @@ public static class CustomLogger
 			.ReadFrom.Services(services)
 			.Enrich.WithProperty("Application", context.HostingEnvironment.ApplicationName)
 			.Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName)
-			//when in development enrich with  thread id
+			//when in development enrich with additional detail
+			//turn off any of them you do not need
 			.Enrich.When(
 				x => context.HostingEnvironment.IsDevelopment(),
 				x => x.WithMemoryUsage())
@@ -68,12 +69,15 @@ public static class CustomLogger
 				x => x.WithMemoryUsage())
 				.Enrich.When(
 				x => context.HostingEnvironment.IsDevelopment(),
-				x => x.WithCallerInfo(includeFileInfo: true, assemblyPrefix: "", excludedPrefixes: new List<string>() { "Serilog", "Microsoft", "System" }))
+				x => x.WithCallerInfo(includeFileInfo: true, assemblyPrefix: "", filePathDepth: 3,
+				 excludedPrefixes: new List<string>() { "Serilog", "Microsoft", "System" }))
 			.WriteTo.Conditional(
 				x => context.HostingEnvironment.IsDevelopment(),
 				x => x.Console(formatProvider: CultureInfo.InvariantCulture,
-				outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] <Process:{ProcessId}:{ProcessName}> <Thread:{ThreadId}:{ThreadName}> <MemoryUsage:{MemoryUsage} Bytes>{NewLine}<Namespace:{Namespace}> <SourceFile:{SourceFile}> <LineNumber:{LineNumber}>{NewLine}{Message}{NewLine}{Exception}{NewLine}")
+				outputTemplate: "[{Timestamp:HH:mm:ss}] [{Level:u3}] <Process:{ProcessId}:{ProcessName}> <Thread:{ThreadId}:{ThreadName}> <MemoryUsage:{MemoryUsage} Bytes>{NewLine}<Namespace:{Namespace}> <SourceFile:{SourceFile}> <LineNumber:{LineNumber}>{NewLine}{Message}{NewLine}{Exception}{NewLine}")
 			)
+			// In Production writes the log to a file 
+			// and restricts the log level to Information to avoid writing Debug and Verbose logs to disk.
 			.WriteTo.Conditional(
 				x => !context.HostingEnvironment.IsDevelopment(),
 				x => x.File("Logs/log.txt", rollingInterval: LogRollingInterval,
