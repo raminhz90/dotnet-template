@@ -1,6 +1,9 @@
 using Boxed.AspNetCore;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using Webapi.HostConfigurations;
 
@@ -35,6 +38,19 @@ public class Startup
 	/// <param name="services">The services.</param>
 	public void ConfigureServices(IServiceCollection services)
 	{
+		_ = services.AddOpenTelemetry()
+			.ConfigureResource(builder=>builder.AddService(this.webHostEnvironment.ApplicationName))
+			.WithMetrics(builder =>
+			{builder.AddAspNetCoreInstrumentation();
+			builder.AddRuntimeInstrumentation();
+			builder.AddProcessInstrumentation();
+				builder.AddOtlpExporter(opt => opt.Endpoint = new Uri("http://localhost:4317"));
+			})
+			.WithTracing(builder =>
+			{
+				builder.AddAspNetCoreInstrumentation();
+				builder.AddOtlpExporter(opt => opt.Endpoint = new Uri("http://localhost:4327"));
+			});
 		_ = services
 			.AddDistributedMemoryCache()
 			.AddResponseCompression()

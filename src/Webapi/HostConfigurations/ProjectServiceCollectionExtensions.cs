@@ -20,5 +20,5 @@ public static class ProjectServiceCollectionExtensions
 		services;
 
 	public static IServiceCollection AddProjectServices(this IServiceCollection services) =>
-		services;
+		services.AddHostedService<TempService>();
 }
